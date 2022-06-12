@@ -4,23 +4,37 @@ import os
 import subprocess
 import argparse
 import pathlib
+import config
 
 parser = argparse.ArgumentParser(description='Synchronize reMarkable and Zotero tablet export.')
-parser.add_argument('Zotero', help="Basefolder defined in ZotFile tablet settings.")
-parser.add_argument('reMarkable', help="Mirrored folder on reMarkable.")
+parser.add_argument('--config', type=str, default='Default',
+                    help='config.ini namespace')
 parser.add_argument('--delete', action='store_true', help="Delete all files on reMarkable that don't exists in the Zotero folder.")
 parser.add_argument('--download', action='store_true', help="Download all files from reMarkable, even if they are not in the Zotero folder. (Overwrites --delete)")
-parser.add_argument('--rmapi', default="rmapi", help="rmapi executable. This can be a path or the name of the rmapi executable that is in PATH. Default is rmapi")
 
 args = parser.parse_args()
 
-ZOTERO_FOLDER = args.Zotero
-RM_FOLDER =  args.reMarkable
+configSection = args.config
+CONFIG = config.read_config()
 
-RMAPI_BIN = args.rmapi
+if not configSection in CONFIG:
+    msg = f'Config section "{configSection}" does not exists.'
+    raise Exception(msg)
+ZOTERO_FOLDER = os.path.join(
+    CONFIG[configSection].get('Zotfile base folder'),
+    CONFIG[configSection].get('Zotfile sub folder', '')
+)
+
+RM_FOLDER =  CONFIG[configSection].get('rM sync folder', 'Zotero')
+RM_FOLDER_ARCHIVE = CONFIG[configSection].get(
+    'rM archive folder', 'Zotero Archive')
+
+RMAPI_BIN = CONFIG[configSection].get('rmapi', 'rmapi')
 
 def rmapi(cmd):
-    return subprocess.check_output(f"{RMAPI_BIN} {cmd}", shell=True, stderr=subprocess.STDOUT).decode("utf-8").split('\n')[0:-1]
+    return subprocess.check_output(
+        f"{RMAPI_BIN} {cmd}", shell=True, stderr=subprocess.STDOUT
+    ).decode("utf-8").split('\n')[0:-1]
 
 def upload_file(file):
     path = os.path.join(ZOTERO_FOLDER, f"{file}.pdf")

@@ -10,21 +10,23 @@ Configuration file {conf} not found
   Create configuration file `{conf}` with contents
 
     [Default]
-    Zotfile_base_folder = ; Your zotfile base folder
-    Zotfile_sub_folder = ; Your zotfile sub folder (if exists)
-    rM sync folder= Zotero; Your rM folder
-    rM archive folder= Zotero_Archive; The archive folder
-    
-    Zipfiles = true
-    rmapi = /path/to/rmapi
+    Zotfile_base_folder=;
+    Zotfile_sub_folder =;
+    rM_sync_folder=paper
+    #rM_archive_folder=Archive;
+    #rmapi=~/rM_companion/rmapi/rmapi
+    #zip_files=true
 """
 
 DEFAULTS = {
     'rm_sync_folder': 'Zotero',
     'rm_archive_folder': 'Zotero_Archive',
-    'zipfiles': True,
-    'rmapi': 'rmapi'
+    'rmapi': 'rmapi',
+    'zip_files': True,
+    'clean_up': False,
+    'fetch_all': True,
 }
+
 def read_config() -> configparser.ConfigParser:
     """
     Read and return Remt project configuration.
@@ -56,8 +58,11 @@ def parse(argv = None):
         msg = f'Config section "{configSection}" does not exists.'
         raise Exception(msg)
 
-    DEFAULTS.update(dict(CONFIG.items(configSection)))
-
+    for option in CONFIG.options(configSection):
+        if option in ['zip_files','clean_up','fetch_all']:
+            DEFAULTS.update({option: CONFIG.getboolean(configSection, option)})
+        else:
+            DEFAULTS.update({option: CONFIG.get(configSection, option)})
     # Parse rest of arguments
     parser = argparse.ArgumentParser(
         parents=[configparser])

@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import rmrl
 from config import parse
 
 args = parse()
@@ -16,10 +17,14 @@ RM_FOLDER_ARCHIVE = args.rm_archive_folder
 
 RMAPI_BIN = os.path.expanduser(args.rmapi)
 
+ZIPFILES=args.zip_files
+zipdir = os.path.join(ZOTERO_FOLDER, "zip")
+if not os.path.isdir(zipdir):
+    os.mkdir(zipdir)
 
-def rmapi(cmd):
+def rmapi(cmd, cmddir="."):
     return subprocess.check_output(
-        f"{RMAPI_BIN} {cmd}", shell=True, stderr=subprocess.STDOUT
+        f"cd {cmddir} && {RMAPI_BIN} {cmd}", shell=True, stderr=subprocess.STDOUT
     ).decode("utf-8").split('\n')[0:-1]
 
 def upload_file(file):
@@ -27,17 +32,19 @@ def upload_file(file):
     rmapi(f'put "{path}" "{RM_FOLDER}"')
 
 def download_file(file):
-    path = '/'.join([RM_FOLDER,file])
-    zip_file = f"{file}.zip"
+    remotepath = '/'.join([RM_FOLDER,file])
+    zip_file = os.path.join(zipdir, f"{file}.zip")
+
     try:
-        rmapi(f'geta -a "{path}"')
-        f_annotations = f"{file}-annotations.pdf"
-        os.replace(f_annotations,os.path.join(ZOTERO_FOLDER,f"{file}.pdf"))
+        print("".join(rmapi(f'get "{remotepath}"', zipdir)[-2:]).replace("downloading: ", "[Downloading]\t")) #download *.zip using rmapi
+        output = rmrl.render(zip_file)
+        with open( os.path.join(ZOTERO_FOLDER, f"{file}.pdf"), 'wb') as outputpdf:
+            outputpdf.write(output.read())
     except Exception as inst:
         if not ("document has no pages" in inst.output.decode("utf-8")):
             print(inst.output.decode("utf-8"))
     finally:
-        if (os.path.isfile(zip_file)):
+        if (not ZIPFILES and (os.path.isfile(zip_file))):
             os.remove(zip_file)
 
 def delete_file(file):

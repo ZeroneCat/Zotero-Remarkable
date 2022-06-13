@@ -2,34 +2,21 @@
 
 import os
 import subprocess
-import argparse
-import pathlib
-import config
+from config import parse
 
-parser = argparse.ArgumentParser(description='Synchronize reMarkable and Zotero tablet export.')
-parser.add_argument('--config', type=str, default='Default',
-                    help='config.ini namespace')
-parser.add_argument('--delete', action='store_true', help="Delete all files on reMarkable that don't exists in the Zotero folder.")
-parser.add_argument('--download', action='store_true', help="Download all files from reMarkable, even if they are not in the Zotero folder. (Overwrites --delete)")
+args = parse()
 
-args = parser.parse_args()
-
-configSection = args.config
-CONFIG = config.read_config()
-
-if not configSection in CONFIG:
-    msg = f'Config section "{configSection}" does not exists.'
-    raise Exception(msg)
 ZOTERO_FOLDER = os.path.join(
-    CONFIG[configSection].get('Zotfile base folder'),
-    CONFIG[configSection].get('Zotfile sub folder', '')
+    args.zotfile_base_folder,
+    args.zotfile_sub_folder
 )
+if "~" in ZOTERO_FOLDER:
+    ZOTERO_FOLDER = os.path.expanduser(ZOTERO_FOLDER)
 
-RM_FOLDER =  CONFIG[configSection].get('rM sync folder', 'Zotero')
-RM_FOLDER_ARCHIVE = CONFIG[configSection].get(
-    'rM archive folder', 'Zotero Archive')
+RM_FOLDER =  args.rm_sync_folder
+RM_FOLDER_ARCHIVE = args.rm_archive_folder
 
-RMAPI_BIN = CONFIG[configSection].get('rmapi', 'rmapi')
+RMAPI_BIN = args.rmapi
 
 def rmapi(cmd):
     return subprocess.check_output(
@@ -60,6 +47,7 @@ def delete_file(file):
 
 def get_files():
     files_on_remarkable = set([f.split('\t')[-1] for f in rmapi(f"ls {RM_FOLDER}")])
+
     files_on_local = set([os.path.splitext(os.path.basename(f))[0] for f in os.listdir(ZOTERO_FOLDER) if f.endswith(".pdf")])
     return files_on_remarkable, files_on_local
 
@@ -86,4 +74,6 @@ def process_files(delete=False, download=False):
             print(f"[Deleting   ] '{file}'")
             delete_file(file)
 
-process_files(delete=args.delete, download=args.download)
+if __name__ == '__main__':
+    pass
+    #process_files(delete=args.delete, download=args.download)

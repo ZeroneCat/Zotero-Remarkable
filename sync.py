@@ -6,17 +6,16 @@ from config import parse
 
 args = parse()
 
-ZOTERO_FOLDER = os.path.join(
+ZOTERO_FOLDER = os.path.expanduser(os.path.join(
     args.zotfile_base_folder,
     args.zotfile_sub_folder
-)
-if "~" in ZOTERO_FOLDER:
-    ZOTERO_FOLDER = os.path.expanduser(ZOTERO_FOLDER)
+))
 
 RM_FOLDER =  args.rm_sync_folder
 RM_FOLDER_ARCHIVE = args.rm_archive_folder
 
-RMAPI_BIN = args.rmapi
+RMAPI_BIN = os.path.expanduser(args.rmapi)
+
 
 def rmapi(cmd):
     return subprocess.check_output(
@@ -44,36 +43,49 @@ def download_file(file):
 def delete_file(file):
     path = '/'.join([RM_FOLDER,file])
     rmapi(f'rm "{path}"')
+    print(f"[Delete]\t {path}")
+
+def archive_file(file):
+    archive_path = '/'.join([RM_FOLDER_ARCHIVE, file])
+    original_path = '/'.join([RM_FOLDER, file])
+    try:
+        rmapi(f'mv "{original_path}" "{archive_path}"')
+    except:
+        print(f"[!Fail] archive {original_path}")
 
 def get_files():
+    Warning_RMAPI = {"Refreshing tree...",
+                    "WARNING!!!",
+                    "  Using the new 1.5 sync, this has not been fully tested yet!!!",
+                    "  Make sure you have a backup, in case there is a bug that could cause data loss!"}
     files_on_remarkable = set([f.split('\t')[-1] for f in rmapi(f"ls {RM_FOLDER}")])
-
+    files_on_remarkable -= Warning_RMAPI
     files_on_local = set([os.path.splitext(os.path.basename(f))[0] for f in os.listdir(ZOTERO_FOLDER) if f.endswith(".pdf")])
     return files_on_remarkable, files_on_local
 
-def process_files(delete=False, download=False):
+def process_files(clean_up=False, fetch_all=False):
     files_on_remarkable, files_on_local = get_files()
     files_to_download = files_on_remarkable.copy()
 
-    if not download:
+    if not fetch_all:
         files_to_download &= files_on_local
 
     files_to_upload = files_on_local - files_on_remarkable
-    files_to_delete = files_on_remarkable - files_on_local
+    files_to_archive = files_on_remarkable - files_on_local
 
     for file in files_to_upload:
-        print(f"[Uploading  ] '{file}'")
+        print(f"[Uploading] \t '{file}'")
         upload_file(file)
 
     for file in files_to_download:
-        print(f"[Downloading] '{file}'")
+        #print(f"[Downloading]\t '{file}'")
         download_file(file)
 
-    if delete and not download:
-        for file in files_to_delete:
-            print(f"[Deleting   ] '{file}'")
-            delete_file(file)
+    if clean_up and not fetch_all:
+        for file in files_to_archive:
+            print(f"[Archiving]\t '{file}'")
+            archive_file(file)
 
 if __name__ == '__main__':
     pass
-    #process_files(delete=args.delete, download=args.download)
+    process_files(clean_up=args.clean_up, fetch_all=args.fetch_all)

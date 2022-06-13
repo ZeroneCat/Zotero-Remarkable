@@ -14,7 +14,7 @@ Configuration file {conf} not found
     Zotfile_sub_folder =;
     rM_sync_folder=paper
     #rM_archive_folder=Archive;
-    #rmapi=~/rM_companion/rmapi/rmapi
+    #rmapi=~/path/to/rmapi
     #zip_files=true
 """
 
@@ -25,6 +25,7 @@ DEFAULTS = {
     'zip_files': True,
     'clean_up': False,
     'fetch_all': True,
+    'upload_only': False,
 }
 
 def read_config() -> configparser.ConfigParser:
@@ -49,9 +50,11 @@ def parse(argv = None):
                                            add_help=False)
     configparser.add_argument('--config', type=str, default='Default',
                               help='config.ini section name')
+
     args, remaining_args = configparser.parse_known_args()
 
     configSection = args.config
+
     CONFIG = read_config()
 
     if not configSection in CONFIG:
@@ -59,7 +62,7 @@ def parse(argv = None):
         raise Exception(msg)
 
     for option in CONFIG.options(configSection):
-        if option in ['zip_files','clean_up','fetch_all']:
+        if option in ['zip_files','clean_up','fetch_all', 'upload_only']:
             DEFAULTS.update({option: CONFIG.getboolean(configSection, option)})
         else:
             DEFAULTS.update({option: CONFIG.get(configSection, option)})
@@ -67,13 +70,15 @@ def parse(argv = None):
     parser = argparse.ArgumentParser(
         parents=[configparser])
     parser.add_argument('-C', '--clean-up', action='store_true',
-                        help="Delete all files on reMarkable that don't exists in the Zotero folder.")
-    parser.add_argument('-F', dest='fetch_all', action='store_true',
+                        help="Archive all files on reMarkable that don't exists in the Zotero folder.")
+    parser.add_argument('--fa', dest='fetch_all', action='store_true',
                         help="Fetch all files in zotfile folder from reMarkable, even if they are not in the Zotero folder."
-                             " (Overwrites --C)")
-    parser.add_argument('--nofetch', action='store_false', dest='fetch_all',
-                        help="Do not fetch all files in zotfile folder from reMarkable, even if they are not in the Zotero folder."
+                             " (Overwrites --clean-up)")
+    parser.add_argument('--nfa', action='store_false', dest='fetch_all',
+                        help="Do not fetch files not in the Zotero folder."
                         )
+    parser.add_argument('-u', '--upload_only', action='store_true',
+                        help="Only upload to reMarkable (will not clean-up or fetch from remarkable")
     parser.set_defaults(**DEFAULTS)
     args = parser.parse_args(remaining_args)
     return args

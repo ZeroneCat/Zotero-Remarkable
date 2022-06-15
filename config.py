@@ -25,14 +25,13 @@ DEFAULTS = {
     'zip_files': True,
     'clean_up': False,
     'fetch_all': True,
-    'upload_only': False,
 }
 
 def read_config() -> configparser.ConfigParser:
     """
     Read and return Remt project configuration.
     """
-    conf_file = os.path.expanduser('~/.config/zotero2rm.ini')
+    conf_file = os.path.expanduser(os.path.join('~','.config','zotero2rm.ini'))
     if not os.path.exists(conf_file):
         msg = ERROR_CFG.format(conf=conf_file)
         raise Exception(msg)
@@ -69,7 +68,7 @@ def parse(argv = None):
     # Parse rest of arguments
     parser = argparse.ArgumentParser(
         parents=[configparser])
-    parser.add_argument('-C', '--clean-up', action='store_true',
+    parser.add_argument('-c', '--clean-up', action='store_true',
                         help="Archive all files on reMarkable that don't exists in the Zotero folder.")
     parser.add_argument('--fa', dest='fetch_all', action='store_true',
                         help="Fetch all files in zotfile folder from reMarkable, even if they are not in the Zotero folder."
@@ -77,8 +76,6 @@ def parse(argv = None):
     parser.add_argument('--nfa', action='store_false', dest='fetch_all',
                         help="Do not fetch files not in the Zotero folder."
                         )
-    parser.add_argument('-u', '--upload_only', action='store_true',
-                        help="Only upload to reMarkable (will not clean-up or fetch from remarkable")
     parser.set_defaults(**DEFAULTS)
     args = parser.parse_args(remaining_args)
     return args

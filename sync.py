@@ -18,7 +18,7 @@ RM_FOLDER_ARCHIVE = args.rm_archive_folder
 RMAPI_BIN = os.path.expanduser(args.rmapi)
 
 ZIPFILES=args.zip_files
-zipdir = os.path.join(ZOTERO_FOLDER, "zip")
+zipdir = os.path.join(ZOTERO_FOLDER, os.path.basename(RM_FOLDER))
 if not os.path.isdir(zipdir):
     os.mkdir(zipdir)
 
@@ -28,11 +28,27 @@ def rmapi(cmd, cmddir="."):
     ).decode("utf-8").split('\n')[0:-1]
 
 def upload_file(file):
-    path = os.path.join(ZOTERO_FOLDER, f"{file}.pdf")
-    rmapi(f'put "{path}" "{RM_FOLDER}"')
     rmapi(f'put "{file}.pdf" "{RM_FOLDER}"', ZOTERO_FOLDER)
 
-def download_file(file):
+def fetch_files(files_to_download, fetch_all=True):
+    print("\n".join(rmapi(f'mget -i "{RM_FOLDER}"', ZOTERO_FOLDER)).replace("downloading ",
+                                                                     "[Downloading]\t"))  # download *.zip using rmapi
+    for f in files_to_download:
+        try:
+            zip_file = os.path.join(zipdir, f+".zip")
+            pdf_file = os.path.join(ZOTERO_FOLDER, f+".pdf")
+            if (os.path.isdir(pdf_file) and os.path.getmtime(zip_file)>os.path.getmtime(os.path.join(ZOTERO_FOLDER, f+".pdf"))) or\
+                (not os.path.isdir(pdf_file) and fetch_all):
+
+                output = rmrl.render(zip_file)
+                with open(os.path.join(ZOTERO_FOLDER, f"{f}.pdf"), 'wb') as outputpdf:
+                    outputpdf.write(output.read())
+        except:
+            print("[Fail!] to convert {f}, unknown error.")
+
+
+
+def download_single_file(file):
     remotepath = '/'.join([RM_FOLDER,file])
     zip_file = os.path.join(zipdir, f"{file}.zip")
 
@@ -59,13 +75,12 @@ def archive_file(file):
     try:
         rmapi(f'mv "{original_path}" "{archive_path}"')
     except:
-        print(f"[!Fail] archive {original_path}")
+        print(f"[Fail] to archive {original_path}!!!")
 
 def get_files():
     Warning_RMAPI = {"Refreshing tree...",
                     "WARNING!!!",
                     "  Using the new 1.5 sync, this has not been fully tested yet!!!",
-                    "  Make sure you have a backup, in case there is a bug that could cause data loss!"}
                     "  Make sure you have a backup, in case there is a bug that could cause data loss!",
                      "ReMarkable Cloud API Shell"}
     files_on_remarkable = set([f.split('\t')[-1] for f in rmapi(f"ls {RM_FOLDER}")])
@@ -73,11 +88,10 @@ def get_files():
     files_on_local = set([os.path.splitext(os.path.basename(f))[0] for f in os.listdir(ZOTERO_FOLDER) if f.endswith(".pdf")])
     return files_on_remarkable, files_on_local
 
-def process_files(clean_up=False, fetch_all=False, upload_only=False):
+def process_files(clean_up=False, fetch_all=False):
     files_on_remarkable, files_on_local = get_files()
 
     files_to_download = files_on_remarkable.copy()
-
     if not fetch_all:
         files_to_download &= files_on_local
 
@@ -88,15 +102,14 @@ def process_files(clean_up=False, fetch_all=False, upload_only=False):
         print(f"[Uploading] \t '{file}'")
         upload_file(file)
 
-    if not upload_only:
-        for file in files_to_download:
-            download_file(file)
+    if len(files_to_download):
+        fetch_files(files_to_download, fetch_all)
 
-        if clean_up and not fetch_all:
-            for file in files_to_archive:
-                print(f"[Archiving]\t '{file}'")
-                archive_file(file)
+    if not fetch_all:
+        for file in files_to_archive:
+            print(f"[Archiving]\t '{file}'")
+            archive_file(file)
 
 if __name__ == '__main__':
     pass
-    process_files(clean_up=args.clean_up, fetch_all=args.fetch_all, upload_only = args.upload_only)
+    process_files(clean_up=args.clean_up, fetch_all=args.fetch_all)

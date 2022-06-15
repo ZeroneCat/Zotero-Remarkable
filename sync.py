@@ -30,6 +30,7 @@ def rmapi(cmd, cmddir="."):
 def upload_file(file):
     path = os.path.join(ZOTERO_FOLDER, f"{file}.pdf")
     rmapi(f'put "{path}" "{RM_FOLDER}"')
+    rmapi(f'put "{file}.pdf" "{RM_FOLDER}"', ZOTERO_FOLDER)
 
 def download_file(file):
     remotepath = '/'.join([RM_FOLDER,file])
@@ -65,6 +66,8 @@ def get_files():
                     "WARNING!!!",
                     "  Using the new 1.5 sync, this has not been fully tested yet!!!",
                     "  Make sure you have a backup, in case there is a bug that could cause data loss!"}
+                    "  Make sure you have a backup, in case there is a bug that could cause data loss!",
+                     "ReMarkable Cloud API Shell"}
     files_on_remarkable = set([f.split('\t')[-1] for f in rmapi(f"ls {RM_FOLDER}")])
     files_on_remarkable -= Warning_RMAPI
     files_on_local = set([os.path.splitext(os.path.basename(f))[0] for f in os.listdir(ZOTERO_FOLDER) if f.endswith(".pdf")])

@@ -88,7 +88,7 @@ def get_files():
     files_on_local = set([os.path.splitext(os.path.basename(f))[0] for f in os.listdir(ZOTERO_FOLDER) if f.endswith(".pdf")])
     return files_on_remarkable, files_on_local
 
-def process_files(clean_up=False, fetch_all=False):
+def process_files(archive=False, fetch_all=False):
     files_on_remarkable, files_on_local = get_files()
 
     files_to_download = files_on_remarkable.copy()
@@ -105,11 +105,11 @@ def process_files(clean_up=False, fetch_all=False):
     if len(files_to_download):
         fetch_files(files_to_download, fetch_all)
 
-    if not fetch_all:
+    if not fetch_all and archive:
         for file in files_to_archive:
             print(f"[Archiving]\t '{file}'")
             archive_file(file)
 
 if __name__ == '__main__':
     pass
-    process_files(clean_up=args.clean_up, fetch_all=args.fetch_all)
+    process_files(archive=args.archive, fetch_all=args.fetch_all)
